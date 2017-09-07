@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingBottom="20dp"
+    tools:context="com.example.raajesharunachalam.communityserviceconnector.CreateEventActivity">
+
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/create_event_user_photo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginRight="30dp"
+            android:layout_marginTop="30dp"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/create_event_user_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="15dp"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@id/create_event_user_photo"
+            app:layout_constraintRight_toLeftOf="@id/create_event_user_photo"
+            app:layout_constraintTop_toTopOf="@id/create_event_user_photo" />
+
+        <TextView
+            android:id="@+id/create_event_activity_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:maxLines="1"
+            android:text="@string/create_event_title"
+            android:textColor="@color/black"
+            android:textSize="42sp"
+            app:layout_constraintHorizontal_bias="0.501"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/create_event_user_photo" />
+
+        <TextView
+            android:id="@+id/create_event_title_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:text="@string/create_event_title_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_activity_title" />
+
+        <EditText
+            android:id="@+id/create_event_title_actual"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="30dp"
+            android:inputType="text"
+            app:layout_constraintBottom_toBottomOf="@id/create_event_title_label"
+            app:layout_constraintLeft_toRightOf="@id/create_event_title_label"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/create_event_title_label" />
+
+
+        <TextView
+            android:id="@+id/create_event_description_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:text="@string/create_event_description_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_title_label" />
+
+        <EditText
+            android:id="@+id/create_event_description_actual"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="30dp"
+            android:layout_marginTop="0dp"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:scrollbars="vertical"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintLeft_toRightOf="@id/create_event_description_label"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/create_event_description_label" />
+
+        <TextView
+            android:id="@+id/create_event_address_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:text="@string/create_event_address_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_description_actual" />
+
+        <EditText
+            android:id="@+id/create_event_address_actual"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="30dp"
+            android:layout_marginTop="0dp"
+            android:inputType="text"
+            android:maxLines="1"
+            android:scrollbars="vertical"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintLeft_toRightOf="@id/create_event_address_label"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/create_event_address_label" />
+
+        <TextView
+            android:id="@+id/create_event_start_date_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:paddingTop="15dp"
+            android:text="@string/create_event_start_date_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_address_actual" />
+
+        <DatePicker
+            android:id="@+id/create_event_start_date_actual"
+            android:layout_width="wrap_content"
+            android:layout_height="150dp"
+            android:layout_marginLeft="20dp"
+            android:calendarViewShown="false"
+            android:datePickerMode="spinner"
+            app:layout_constraintLeft_toRightOf="@id/create_event_start_date_label"
+            app:layout_constraintTop_toTopOf="@id/create_event_start_date_label" />
+
+        <TextView
+            android:id="@+id/create_event_start_time_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:paddingTop="15dp"
+            android:text="@string/create_event_start_time_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_start_date_actual" />
+
+        <TimePicker
+            android:id="@+id/create_event_start_time_actual"
+            android:layout_width="wrap_content"
+            android:layout_height="150dp"
+            android:layout_marginLeft="20dp"
+            android:timePickerMode="spinner"
+            app:layout_constraintLeft_toRightOf="@id/create_event_start_time_label"
+            app:layout_constraintTop_toTopOf="@id/create_event_start_time_label" />
+
+        <TextView
+            android:id="@+id/create_event_end_date_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:paddingTop="15dp"
+            android:text="@string/create_event_end_date_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_start_time_actual" />
+
+        <DatePicker
+            android:id="@+id/create_event_end_date_actual"
+            android:layout_width="wrap_content"
+            android:layout_height="150dp"
+            android:layout_marginLeft="20dp"
+            android:calendarViewShown="false"
+            android:datePickerMode="spinner"
+            app:layout_constraintLeft_toRightOf="@id/create_event_end_date_label"
+            app:layout_constraintTop_toTopOf="@id/create_event_end_date_label" />
+
+        <TextView
+            android:id="@+id/create_event_end_time_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:paddingTop="15dp"
+            android:text="@string/create_event_end_time_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_end_date_actual" />
+
+
+        <TimePicker
+            android:id="@+id/create_event_end_time_actual"
+            android:layout_width="wrap_content"
+            android:layout_height="150dp"
+            android:layout_marginLeft="20dp"
+            android:timePickerMode="spinner"
+            app:layout_constraintLeft_toRightOf="@id/create_event_end_time_label"
+            app:layout_constraintTop_toTopOf="@id/create_event_end_time_label" />
+
+        <TextView
+            android:id="@+id/create_event_link_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:text="@string/create_event_link_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_end_time_actual" />
+
+        <EditText
+            android:id="@+id/create_event_link_actual"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="30dp"
+            android:hint="@string/link_hint_optional"
+            android:inputType="text"
+            android:scrollbars="vertical"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintLeft_toRightOf="@id/create_event_link_label"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/create_event_link_label" />
+
+        <TextView
+            android:id="@+id/create_event_image_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="30dp"
+            android:layout_marginTop="30dp"
+            android:text="@string/create_event_image_label"
+            android:textColor="@color/black"
+            android:textSize="30sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_link_actual" />
+
+        <EditText
+            android:id="@+id/create_event_image_actual"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="30dp"
+            android:hint="@string/link_hint_optional"
+            android:inputType="text"
+            android:scrollbars="vertical"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintLeft_toRightOf="@id/create_event_image_label"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/create_event_image_label" />
+
+        <Button
+            android:id="@+id/create_event_submit_button"
+            android:layout_width="150dp"
+            android:layout_height="75dp"
+            android:layout_marginTop="50dp"
+            android:background="@color/red"
+            android:text="@string/create_event_submit"
+            android:textSize="24sp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/create_event_image_actual" />
+
+    </android.support.constraint.ConstraintLayout>
+
+</ScrollView>

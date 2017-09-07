@@ -1,0 +1,220 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
+import android.provider.CalendarContract;
+import android.support.v7.widget.RecyclerView;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+
+/**
+ * Class that is an adapter to a RecyclerView which binds data from Event objeccts to their
+ * associated Viewholders.
+ * <p>
+ * Created by raajesharunachalam on 4/9/17.
+ *
+ * @author arnchlm2
+ */
+
+public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventListHolder> {
+    private Context context;
+    private ArrayList<Event> events;
+    long calendarID;
+    String username;
+
+    public EventAdapter(Context context, ArrayList<Event> events, long calendarID, String username) {
+        this.context = context;
+        this.events = events;
+        this.calendarID = calendarID;
+        this.username = username;
+    }
+
+    /**
+     * Inflates an XML file for an EventListHolder ViewHolder so it can be displayed on screen and
+     * returns this set of newly inflated XML elements.
+     *
+     * @param parent   The ViewGroup into which the new View will be added after it is bound to an
+     *                 adapter position.
+     * @param viewType The view type of the new View.
+     * @return An EventListHolder ViewHolder that has been properly created and its associated XML
+     * file has been properly inflated.
+     */
+    @Override
+    public EventListHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        int movieItemLayout = R.layout.event_list_item;
+        boolean shouldAttachToParent = false;
+        View view = inflater.inflate(movieItemLayout, parent, shouldAttachToParent);
+        return new EventListHolder(view);
+    }
+
+    /**
+     * Takes data from a given event object and places it in the proper XML elements of the
+     * associated Viewholder.
+     *
+     * @param holder   An EventListHolder ViewHolder object that represents each Event in the
+     *                 Recyclerview.
+     * @param position The index of the current Event element that is being bound with data and
+     *                 displayed.
+     */
+    @Override
+    public void onBindViewHolder(final EventListHolder holder, int position) {
+        final Event event = events.get(position);
+
+        Picasso.with(context).load(event.getImageURL()).fit().into(holder.eventLogo);
+        holder.eventTitle.setText(event.getTitle());
+        holder.eventDescription.setText("Description: " + event.getDescription());
+        holder.eventAddress.setText("Address: " + event.getAddress());
+        holder.eventDate.setText("Date: " + event.getStartDate() + " - " + event.getEndDate());
+
+        String time = "Time: " + event.getStartTime() + " - " + event.getEndTime();
+        holder.eventTime.setText(time);
+
+        /**
+         * Adds each event that was clicked on to the device's calendar by sending the appropriate
+         * data. Code modeled from https://developer.android.com/guide/topics/providers/calendar-provider.html
+         */
+        holder.eventCalendarButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                long startMillis = calculateTimeInMillis(event.getStartDate(), event.getStartTime());
+                long endMillis = calculateTimeInMillis(event.getEndDate(), event.getEndTime());
+                String title = event.getTitle();
+                String address = event.getAddress();
+                String description = event.getDescription();
+                long calID = calendarID;
+
+                //Inserts the Event with all of its individual details into the device's calendar
+                ContentResolver cr2 = context.getContentResolver();
+                ContentValues values = new ContentValues();
+                values.put(CalendarContract.Events.DTSTART, startMillis);
+                values.put(CalendarContract.Events.DTEND, endMillis);
+                values.put(CalendarContract.Events.TITLE, title);
+                values.put(CalendarContract.Events.EVENT_LOCATION, address);
+                values.put(CalendarContract.Events.DESCRIPTION, description);
+                values.put(CalendarContract.Events.CALENDAR_ID, calID);
+                values.put(CalendarContract.Events.EVENT_TIMEZONE, "America/Chicago");
+                try {
+                    cr2.insert(CalendarContract.Events.CONTENT_URI, values);
+
+                    //Tells the user that it the event has been added
+                    String eventAdded = "This event has been added to your calendar";
+                    Toast toast = Toast.makeText(context, eventAdded, Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL, 0, 0);
+                    toast.show();
+                } catch (SecurityException s) {
+                    s.printStackTrace();
+                    return;
+                }
+            }
+        });
+
+        final FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference eventsReference = database.getReference("events");
+        DatabaseReference eventReference = eventsReference.child("Engineering Open House");
+        DatabaseReference peopleReference = eventReference.child("People Interested");
+
+        peopleReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.e("Number", String.valueOf(dataSnapshot.getKey()));
+                holder.numberInterested.setText(String.valueOf(dataSnapshot.getChildrenCount()));
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        holder.interestedButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FirebaseDatabase database = FirebaseDatabase.getInstance();
+                DatabaseReference eventsReference = database.getReference("events");
+                DatabaseReference eventReference = eventsReference.child("Engineering Open House");
+                eventReference.child("People Interested").push().setValue(username);
+            }
+        });
+    }
+
+    private long calculateTimeInMillis(String date, String time) {
+        //Breaks up the date and time into its individual components
+        String[] dateComponents = date.split("/");
+        int year = Integer.parseInt(dateComponents[2]);
+        int month = Integer.parseInt(dateComponents[0]) - 1;
+        int day = Integer.parseInt(dateComponents[1]);
+
+        String[] timeComponents = time.split(":");
+        int hour = Integer.parseInt(timeComponents[0]);
+        //The millisecond conversion uses military time, so add 12 if the time is any time in pm after 12 pm
+        int midDay = 12;
+        int conversionToPM = 12;
+        if (timeComponents[1].contains("p") && hour != midDay) {
+            hour += conversionToPM;
+        }
+        int minute = Integer.parseInt(timeComponents[1].substring(0, 2));
+
+        //Uses the date/time components above to calculate the exact end time in milliseconds
+        Calendar exactTime = Calendar.getInstance();
+        exactTime.set(year, month, day, hour, minute);
+        return exactTime.getTimeInMillis();
+    }
+
+    /**
+     * Returns the number of events contained in this adapter.
+     *
+     * @return the number of Event object that this adapter has.
+     */
+    @Override
+    public int getItemCount() {
+        return events.size();
+    }
+
+    /**
+     * Represents a ViewHolder for each Event object with its associated XML elements for its data
+     */
+    class EventListHolder extends RecyclerView.ViewHolder {
+        ImageView eventLogo;
+        TextView eventTitle;
+        TextView eventDescription;
+        TextView eventAddress;
+        TextView eventDate;
+        TextView eventTime;
+        TextView numberInterested;
+        Button eventCalendarButton;
+        Button interestedButton;
+
+        public EventListHolder(View itemView) {
+            super(itemView);
+            eventLogo = (ImageView) (itemView.findViewById(R.id.event_logo));
+            eventTitle = (TextView) (itemView.findViewById(R.id.event_title));
+            eventDescription = (TextView) (itemView.findViewById(R.id.event_description));
+            eventAddress = (TextView) (itemView.findViewById(R.id.event_address));
+            eventDate = (TextView) (itemView.findViewById(R.id.event_date));
+            eventTime = (TextView) (itemView.findViewById(R.id.event_time));
+            numberInterested = (TextView) (itemView.findViewById(R.id.people_interested_actual));
+            eventCalendarButton = (Button) (itemView.findViewById(R.id.event_calendar_button));
+            interestedButton = (Button) (itemView.findViewById(R.id.interested_button));
+        }
+    }
+}

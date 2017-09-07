@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "820093963133",
+    "firebase_url": "https://communityserviceconnector.firebaseio.com",
+    "project_id": "communityserviceconnector",
+    "storage_bucket": "communityserviceconnector.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820093963133:android:c76d791fe09905c5",
+        "android_client_info": {
+          "package_name": "com.example.raajesharunachalam.communityserviceconnector"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "820093963133-mu02j59esi4rk0scvm7h00acm3vhvqjs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.raajesharunachalam.communityserviceconnector",
+            "certificate_hash": "6a8899f5ac1b4b5e6b00bb5ee48b52e5848aa580"
+          }
+        },
+        {
+          "client_id": "820093963133-g29c02qso433r64fdh4hl1k4osapfr2q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6mSq_Hg_JKN7bE1GXagOVlNsSPVPBMQc"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "820093963133-g29c02qso433r64fdh4hl1k4osapfr2q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

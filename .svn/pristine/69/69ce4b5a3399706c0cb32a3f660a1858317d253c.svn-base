@@ -1,0 +1,391 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.net.Uri;
+import android.provider.CalendarContract;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.text.util.Linkify;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.widget.ToggleButton;
+
+import com.firebase.ui.auth.AuthUI;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+/**
+ * Activity that provides more details and user action options for a specific event that the user
+ * has clicked on.
+ *
+ * @author arnchlm2
+ */
+public class EventDetailActivity extends AppCompatActivity {
+
+    private static final String TAG = "EventDetailActivity";
+
+    private static final int CALENDAR_ID = 1;
+
+    private static final int USER_PHOTO_DIMENSION = 40;
+
+    private static final int EVENT_IMAGE_WIDTH = 400;
+    private static final int EVENT_IMAGE_HEIGHT = 300;
+
+    private static final int LIST_PADDING_TOP = 10;
+    private static final int LIST_RESIZE_LOWER_LIMIT = 5;
+    private static final int LIST_WIDTH = 350;
+    private static final int LIST_MAXIMUM_HEIGHT = 375;
+
+    FirebaseUser currentUser;
+    FirebaseDatabase database;
+    TextView userName;
+    String userFormattedEmail;
+    String userDisplayName;
+    ImageView userPhoto;
+    Event event;
+    TextView title;
+    ImageView image;
+    TextView description;
+    TextView address;
+    TextView start;
+    TextView end;
+    TextView peopleInterested;
+    Button viewPeople;
+    TextView eventLink;
+    Button addToCalendar;
+    ToggleButton interestedButton;
+    Button mapsButton;
+
+    HashMap<String, String> peopleInterestedEvent;
+    HashMap<String, String> eventsUserInterested;
+
+    /**
+     * Binds all the data for each a specific event and sets the onClickListeners for different
+     * buttons that allow the user to perform certain actions.
+     *
+     * @param savedInstanceState A previous instance of the activity
+     */
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_event_detail);
+
+        userName = (TextView) findViewById(R.id.event_detail_user_name);
+        userPhoto = (ImageView) findViewById(R.id.event_detail_user_icon);
+        title = (TextView) findViewById(R.id.event_detail_title);
+        image = (ImageView) findViewById(R.id.event_detail_image);
+        description = (TextView) findViewById(R.id.event_detail_description_actual);
+        address = (TextView) findViewById(R.id.event_detail_address_actual);
+        start = (TextView) findViewById(R.id.event_detail_start_actual);
+        end = (TextView) findViewById(R.id.event_detail_end_actual);
+        peopleInterested = (TextView) findViewById(R.id.event_detail_people_interested_actual);
+        viewPeople = (Button) findViewById(R.id.event_detail_view_people);
+        eventLink = (TextView) findViewById(R.id.event_detail_link_actual);
+        addToCalendar = (Button) findViewById(R.id.event_detail_add_to_calendar);
+        interestedButton = (ToggleButton) findViewById(R.id.event_detail_interested_button);
+        mapsButton = (Button) findViewById(R.id.event_detail_maps_button);
+
+        Intent intent = getIntent();
+        if (intent.hasExtra(getString(R.string.event_key))) {
+            event = (Event) intent.getParcelableExtra(getString(R.string.event_key));
+        }
+
+        //Loads the username and photo at the top of the activity
+        database = FirebaseDatabase.getInstance();
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+        currentUser = auth.getCurrentUser();
+        userFormattedEmail = currentUser.getEmail().replace(".", "\\");
+        userDisplayName = currentUser.getDisplayName();
+        userName.setText(getString(R.string.username_label) + userDisplayName);
+        Picasso.with(this).load(currentUser.getPhotoUrl()).resize(USER_PHOTO_DIMENSION, USER_PHOTO_DIMENSION)
+                .into(userPhoto);
+
+        //Sets all the event's details
+        title.setText(event.getTitle());
+        Picasso.with(this).load(event.getImageURL()).resize(EVENT_IMAGE_WIDTH, EVENT_IMAGE_HEIGHT).into(image);
+        description.setText(event.getDescription());
+        address.setText(event.getAddress());
+        start.setText(event.getStartDate() + " At " + event.getStartTime());
+        end.setText(event.getEndDate() + " At " + event.getEndTime());
+        peopleInterested.setText(String.valueOf(event.getPeopleInterested().size()));
+        eventLink.setText(event.getEventLink());
+
+        //If the link is not the default "None", then make it a hyperlink
+        boolean isWebLink = !(event.getEventLink().equals(Event.EVENT_LINK_DEFAULT));
+        if (isWebLink) {
+            eventLink.setAutoLinkMask(Linkify.WEB_URLS);
+        }
+
+        viewPeople.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                displayPeopleInterestedList();
+            }
+        });
+
+        addToCalendar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                addEventToCalendar();
+            }
+        });
+
+        /**
+         * Gets the events the user is interested in and toggles the "Add Interest" button to
+         * "Remove Interest" if the user is already interested in this event
+         */
+        DatabaseReference userReference = database.getReference("Users/" + userFormattedEmail);
+        eventsUserInterested = new HashMap<>();
+        userReference.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot event : dataSnapshot.getChildren()) {
+                    eventsUserInterested.put(event.getKey(), event.getValue(String.class));
+                }
+                setInterestedButtonConfiguration();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+
+        DatabaseReference peopleReference = database.getReference("Events/" + event.getTitle() +
+                "/" + Event.PEOPLE_INTERESTED_KEY);
+
+        peopleInterestedEvent = event.getPeopleInterested();
+        peopleInterestedEvent.clear();
+
+        /**
+         * Listens for users being added or removed to the list of people interested an event and
+         * updates the UI accordingly.
+         */
+        peopleReference.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                peopleInterestedEvent.put(dataSnapshot.getKey(), dataSnapshot.getValue(String.class));
+                peopleInterested.setText(String.valueOf(peopleInterestedEvent.size()));
+                eventsUserInterested.put(event.getTitle(), "");
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                peopleInterested.setText(String.valueOf(peopleInterestedEvent.size()));
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        /**
+         * Adds the user to a list of interested people in an event and adds the event to a list of
+         * events that the user is interested in
+         */
+        interestedButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                //User has clicked Add Interest, so add interest, and change button
+                if (isChecked) {
+                    interestedButton.setBackgroundResource(R.color.darkBlue);
+                    try {
+                        DatabaseOperations.addInterest(event.getTitle(), userFormattedEmail, userDisplayName);
+                    } catch (InterruptedException i) {
+                        Log.d(TAG, "Interrupted");
+                    }
+                } else {
+                    //User has clicked Remove Interest, so remove their interest, and change button
+                    interestedButton.setBackgroundResource(R.color.lightBlue);
+                    try {
+                        DatabaseOperations.removeInterest(userFormattedEmail, event.getTitle(),
+                                eventsUserInterested, peopleInterestedEvent);
+                    } catch (InterruptedException i) {
+                        Log.d(TAG, "Interrupted");
+                    }
+                }
+            }
+        });
+
+        /**
+         * Implicit intent that opens google maps navigation to the address of the event from the
+         * user's current location. Implicit intent code based on: https://developers.google.com/
+         * maps/documentation/android-api/intents
+         */
+        mapsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String formattedAddress = event.getAddress().replace(" ", "+");
+                Uri gmmIntentUri = Uri.parse("google.navigation:q=" + formattedAddress);
+                Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+                mapIntent.setPackage("com.google.android.apps.maps");
+                startActivity(mapIntent);
+            }
+        });
+    }
+
+    /**
+     * Sets up an AlertDialog that pops up on the user's screen with a scrollable list of people
+     * in a ListView that are interested in the current event.
+     */
+    private void displayPeopleInterestedList() {
+        AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(EventDetailActivity.this);
+        dialogBuilder.setTitle("People Interested");
+
+        ListView peopleInterestedList = new ListView(EventDetailActivity.this);
+        peopleInterestedList.setPadding(0, LIST_PADDING_TOP, 0, 0);
+
+        List<String> peopleInterested = new ArrayList<String>();
+
+        if (event.getPeopleInterested().size() == 0) {
+            peopleInterested.add("None");
+        } else {
+            for (String personName : event.getPeopleInterested().values()) {
+                peopleInterested.add(personName);
+            }
+        }
+        ArrayAdapter<String> peopleInterestedAdapter = new ArrayAdapter<String>(EventDetailActivity.this,
+                R.layout.individual_name_item, R.id.name, peopleInterested);
+
+        peopleInterestedList.setAdapter(peopleInterestedAdapter);
+        dialogBuilder.setView(peopleInterestedList);
+        dialogBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        AlertDialog dialog = dialogBuilder.create();
+        dialog.show();
+        if (peopleInterested.size() > LIST_RESIZE_LOWER_LIMIT) {
+            dialog.getWindow().setLayout(LIST_WIDTH, LIST_MAXIMUM_HEIGHT);
+        } else {
+            dialog.getWindow().setLayout(LIST_WIDTH, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    /**
+     * Adds the current event with associated details to the user's device calendar based. Code based
+     * on Calendar Provider tutorial in Android documentation: https://developer.android.com/guide/
+     * topics/providers/calendar-provider.html#add-event
+     */
+    private void addEventToCalendar() {
+        long startMillis = Calculations.calculateTimeInMillis(event.getStartDate(), event.getStartTime());
+        long endMillis = Calculations.calculateTimeInMillis(event.getEndDate(), event.getEndTime());
+        String title = event.getTitle();
+        String address = event.getAddress();
+        String description = event.getDescription();
+        long calID = CALENDAR_ID;
+
+        //Inserts the Event with all of its individual details into the device's calendar
+        ContentResolver cr2 = EventDetailActivity.this.getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(CalendarContract.Events.DTSTART, startMillis);
+        values.put(CalendarContract.Events.DTEND, endMillis);
+        values.put(CalendarContract.Events.TITLE, title);
+        values.put(CalendarContract.Events.EVENT_LOCATION, address);
+        values.put(CalendarContract.Events.DESCRIPTION, description);
+        values.put(CalendarContract.Events.CALENDAR_ID, calID);
+        values.put(CalendarContract.Events.EVENT_TIMEZONE, "America/Chicago");
+        try {
+            cr2.insert(CalendarContract.Events.CONTENT_URI, values);
+
+            //Tells the user that it the event has been added
+            String eventAdded = getString(R.string.event_detail_calendar_message);
+            Toast.makeText(EventDetailActivity.this, eventAdded, Toast.LENGTH_LONG).show();
+        } catch (SecurityException s) {
+            s.printStackTrace();
+            return;
+        }
+    }
+
+    /**
+     * Sets the configuration to "Add Interest" or "Remove Interest" based on if the user is already
+     * interested in the event or not.
+     */
+    public void setInterestedButtonConfiguration() {
+        if (eventsUserInterested.containsKey(event.getTitle())) {
+            interestedButton.setChecked(true);
+            interestedButton.setBackgroundResource(R.color.darkBlue);
+        } else {
+            interestedButton.setChecked(false);
+            interestedButton.setBackgroundResource(R.color.lightBlue);
+        }
+    }
+
+
+    /**
+     * Displays the sign out button in the top right of the mneu
+     *
+     * @param menu The menu of the current Activity
+     * @return A boolean signifying if the creation of the menu was successful
+     */
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.constant_menu, menu);
+        return true;
+    }
+
+    /**
+     * Makes the sign out button cause the user to sign out from Firebase when clicked
+     *
+     * @param item The specific item that was clicked
+     * @return A boolean signifying if the handling of the click on the menu item was successful
+     */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_sign_out_button) {
+            AuthUI.getInstance().signOut(this);
+            Intent intent = new Intent(EventDetailActivity.this, AuthActivity.class);
+            intent.putExtra(getString(R.string.sign_out_key), "Signed Out");
+            startActivity(intent);
+
+            //Deletes this current activity so it cannot be reaccessed after the user has signed out
+            finish();
+
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+}

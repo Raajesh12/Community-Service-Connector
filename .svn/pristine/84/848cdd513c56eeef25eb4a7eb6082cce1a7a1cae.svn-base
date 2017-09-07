@@ -1,0 +1,129 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.support.annotation.NonNull;
+import android.support.test.runner.AndroidJUnit4;
+import android.util.Log;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.*;
+
+/**
+ * Tests the reading of existing Events from the Database and the writing of new events to the
+ * Database
+ * <p>
+ * Created by raajesharunachalam on 4/18/17.
+ *
+ * @author arnchlm2
+ */
+@RunWith(AndroidJUnit4.class)
+public class EventsTest {
+    FirebaseDatabase database;
+
+    @Before
+    public void setUp() throws Exception {
+        database = FirebaseDatabase.getInstance();
+    }
+
+    /**
+     * Test the reading of an Event and all its associated details from the Database schema.
+     *
+     * @throws Exception An Exception from an Assertion or from an InterruptedException caused by
+     *                   the CountDownLatch.
+     */
+    @Test
+    public void readEventData() throws Exception {
+        DatabaseReference engineeringEvent = database.getReference("Events/Engineering Open House");
+
+        Event event = DatabaseOperations.readEvent(engineeringEvent);
+
+        String expectedTitle = "Engineering Open House";
+        assertEquals(expectedTitle, event.getTitle());
+
+        String expectedAddress = "1401 W Green St, Urbana, IL 61801";
+        assertEquals(expectedAddress, event.getAddress());
+
+        String expectedDescription = "Showcase of engineering research to young, aspiring STEM students";
+        assertEquals(expectedDescription, event.getDescription());
+
+        String expectedEndDate = "4/23/2017";
+        assertEquals(expectedEndDate, event.getEndDate());
+
+        String expectedEndTime = "4:00 PM";
+        assertEquals(expectedEndTime, event.getEndTime());
+
+        String expectedImageURL = "http://uihistories.library.illinois.edu/photoarchive/wallpapers/" +
+                "uiuc/full/50235.jpg";
+
+        int expectedNumberPeopleInterested = 1;
+        assertEquals(expectedNumberPeopleInterested, event.getPeopleInterested().size());
+
+        String expectedPersonInterested = "Raajesh Arunachalam";
+        assertEquals(expectedPersonInterested, event.getPeopleInterested().get(0));
+
+        String expectedStartDate = "4/21/2017";
+        assertEquals(expectedStartDate, event.getStartDate());
+
+        String expectedStartTime = "12:00 PM";
+        assertEquals(expectedStartTime, event.getStartTime());
+        assertEquals(expectedImageURL, event.getImageURL());
+    }
+
+    /**
+     * Tests the creation of a new Event and its associated details in the Database.
+     *
+     * @throws Exception An Exception from an Assertion or from an InterruptedException caused by
+     *                   the CountDownLatch.
+     */
+    @Test
+    public void addNewEvent() throws Exception {
+        String eventTitle = "Champaign Public School Outreach";
+        String address = "306 W Green St, Champaign, IL 61820";
+        String description = "Introduce elementary/middle school students to Computer Science";
+        String imageURL = "https://edison.champaignschools.org/sites/edison_d7/files/" +
+                "glazed-assets/edison_0.jpg?fid=31";
+        String startDate = "4/18/2017";
+        String startTime = "11:00 AM";
+        String endDate = "4/18/2017";
+        String endTime = "3:00 PM";
+
+        DatabaseOperations.addEvent(eventTitle, address, description, imageURL, startDate, startTime,
+                endDate, endTime);
+    }
+
+    /**
+     * Tests that an event with the same title will not be added to the Database schema.
+     *
+     * @throws Exception An Exception from an Assertion or from an InterruptedException caused by
+     *                   the CountDownLatch.
+     */
+    @Test
+    public void addSameEvent() throws Exception {
+        String eventTitle = "Champaign Public School Outreach";
+        String address = "100 3rd St, Champaign, IL 61820";
+        String description = "Introduce elementary/middle school students to Computer Science";
+        String imageURL = "https://edison.champaignschools.org/sites/edison_d7/files/" +
+                "glazed-assets/edison_0.jpg?fid=31";
+        String startDate = "4/22/2017";
+        String startTime = "9:00 AM";
+        String endDate = "4/19/2017";
+        String endTime = "5:00 PM";
+
+        DatabaseOperations.addEvent(eventTitle, address, description, imageURL, startDate, startTime,
+                endDate, endTime);
+    }
+}

@@ -1,0 +1,372 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.content.Intent;
+import android.location.Location;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
+import com.squareup.picasso.Picasso;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.util.Date;
+
+/**
+ * Activity that demonstrates the ability to retrieve the current location in GPS coordinates of the
+ * user and to calculate distances using the Google Maps API. Code is modeled on tutorial from:
+ * https://developer.android.com/training/location/index.html
+ *
+ * @author arnchlm2
+ */
+public class LocationActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
+
+    private static final int LOCATION_REQUEST_SPEED = 5000;
+    private static int FASTEST_LOCATION_REQUEST_SPEED = 3000;
+    public static final double METERS_TO_MILES = 0.000621371;
+    public static final int IMAGE_DIMENSION = 40;
+
+    String displayName;
+    TextView userInfo;
+    Uri photoURL;
+    ImageView userIcon;
+    Button getLocationButton;
+    TextView currentTime;
+    TextView mLatitude;
+    TextView mLongitude;
+    EditText enterDestination;
+    TextView addressDetails;
+    Button submitButton;
+    TextView distanceActual;
+    Button continueButton;
+
+
+    GoogleApiClient mGoogleApiClient;
+    String lastUpdatedTime;
+    Location recentLocation;
+
+    /**
+     * Sets up the user profile and the OnClickListeners used in this activity.
+     *
+     * @param savedInstanceState A previous version of this activity with associated saved data.
+     */
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_location);
+
+        userInfo = (TextView) findViewById(R.id.user_info);
+        userIcon = (ImageView) findViewById(R.id.user_icon);
+        getLocationButton = (Button) findViewById(R.id.get_location_button);
+        currentTime = (TextView) findViewById(R.id.current_time);
+        mLatitude = (TextView) findViewById(R.id.latitude);
+        mLongitude = (TextView) findViewById(R.id.longitude);
+        enterDestination = (EditText) findViewById(R.id.enter_destination_actual);
+        addressDetails = (TextView) findViewById(R.id.address_details);
+        submitButton = (Button) findViewById(R.id.submit_button);
+        distanceActual = (TextView) findViewById(R.id.distance_actual);
+        continueButton = (Button) findViewById(R.id.location_continue_button);
+
+        //Sets the user's name and picture based on their login account
+        Intent intent = getIntent();
+        if (intent.hasExtra(getString(R.string.display_name_key)) && intent.hasExtra(getString(R.string.display_photo_key))) {
+            displayName = intent.getStringExtra(getString(R.string.display_name_key));
+            userInfo.setText("User: " + displayName);
+
+            photoURL = (Uri) intent.getParcelableExtra(getString(R.string.display_photo_key));
+            if (photoURL != null) {
+                Picasso.with(this).load(photoURL).resize(IMAGE_DIMENSION, IMAGE_DIMENSION).into(userIcon);
+            }
+        }
+
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+
+        getLocationButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                currentTime.setText(getString(R.string.location_time) + " " + lastUpdatedTime);
+                mLatitude.setText(getString(R.string.location_latitude) + " " + recentLocation.getLatitude());
+                mLongitude.setText(getString(R.string.location_longitude) + " " + recentLocation.getLongitude());
+            }
+        });
+
+        //Allows the user to calculate the distance to a destination that they input
+        submitButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String location = enterDestination.getText().toString();
+                new GoogleMapsAsyncTask().execute(location);
+            }
+        });
+
+        //Moves the user to the next activity
+        continueButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(LocationActivity.this, CalendarActivity.class);
+                intent.putExtra(getString(R.string.display_name_key), displayName);
+                intent.putExtra(getString(R.string.display_photo_key), photoURL);
+                intent.putExtra(getString(R.string.latitude_key), recentLocation.getLatitude());
+                intent.putExtra(getString(R.string.longitude_key), recentLocation.getLongitude());
+                startActivity(intent);
+            }
+        });
+    }
+
+    /**
+     * Begins connecting to the Google Play Service Location API.
+     */
+    @Override
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    /**
+     * Stops connecting to the Google Play Service Location API.
+     */
+    @Override
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
+    }
+
+    /**
+     * Sets up the logic for retrieving the location from the Wi-fi/GPS signals from the system
+     * and what intervals to use
+     *
+     * @param bundle Bundle of data provided to clients by Google Play services.
+     *               May be null if no content is provided by the service.
+     */
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        //Gets the previous location, if there is one, before the new location updates begin
+        try {
+            Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            if (lastLocation != null) {
+                recentLocation = lastLocation;
+
+                String time = DateFormat.getDateTimeInstance().format(new Date());
+                lastUpdatedTime = time;
+            }
+        } catch (SecurityException s) {
+            s.printStackTrace();
+        }
+
+        //Begins the new location updates
+        LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(LOCATION_REQUEST_SPEED);
+        mLocationRequest.setFastestInterval(FASTEST_LOCATION_REQUEST_SPEED);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        try {
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mGoogleApiClient, mLocationRequest, this);
+        } catch (SecurityException s) {
+            s.printStackTrace();
+            String enableGPSPermission = "You need to enable the Security Permission for the GPS";
+            Toast.makeText(this, enableGPSPermission, Toast.LENGTH_LONG);
+        }
+
+
+    }
+
+    /**
+     * Handles the case of when the connection to the Google Play Services Location API is suspended.
+     *
+     * @param i An integer that represents the reason for the disconnection
+     */
+    @Override
+    public void onConnectionSuspended(int i) {
+        String connectionSuspended = "Connection suspended";
+        Toast.makeText(this, connectionSuspended, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Handles the case of when the connection to the Google Play Services Location API fails.
+     *
+     * @param connectionResult A connectionResult that descries the error of why the connection
+     *                         failed.
+     */
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        String connectionFailed = "Connection Failed";
+        Toast.makeText(this, connectionFailed, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Callback method that updates the UI whenever a new location has been detected.
+     *
+     * @param location The most recently received Location by the Wi-Fi/GPS
+     */
+    @Override
+    public void onLocationChanged(Location location) {
+        recentLocation = location;
+
+        String time = DateFormat.getDateTimeInstance().format(new Date());
+        lastUpdatedTime = time;
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.constant_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if(item.getItemId() == R.id.menu_sign_out_button){
+            AuthUI.getInstance().signOut(this);
+            Intent intent = new Intent(LocationActivity.this, AuthActivity.class);
+            intent.putExtra(getString(R.string.sign_out_key), "Signed Out");
+            startActivity(intent);
+            return true;
+        }
+        else{
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        AuthUI.getInstance().signOut(this);
+        super.onBackPressed();
+    }
+
+    /**
+     * An AsyncTask to query the Google Maps API on a background thread to process the address the
+     * user entered into GPS coordinates in order to calculate distances.
+     */
+    class GoogleMapsAsyncTask extends AsyncTask<String, Void, MapsList> {
+
+        /**
+         * Calls the Google Maps API with the address/location entered by the user and serializes
+         * the JSON received into objects
+         *
+         * @param addresses The address the user enters. It will always only be 1 String
+         * @return A MapsList object that contains the response from the Google Maps API
+         */
+        @Override
+        protected MapsList doInBackground(String... addresses) {
+            try {
+                //Format the address and generate the proper API call URL
+                String address = addresses[0];
+                String addressFormatted = address.replace(' ', '+');
+                String urlString = GoogleAPIConstants.GEOCODING_BASE_URL + addressFormatted +
+                        "&key=" + GoogleAPIConstants.Maps_API_KEY;
+
+                //Make the network request and serialize the resulting JSON into the proper objects
+                URL url = new URL(urlString);
+                InputStream inStream = url.openStream();
+                InputStreamReader reader = new InputStreamReader(inStream, Charset.forName("UTF-8"));
+                JsonReader jsonReader = new JsonReader(reader);
+                Gson gson = new Gson();
+                MapsList mapsList = gson.fromJson(jsonReader, MapsList.class);
+                return mapsList;
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+                return null;
+            } catch (IOException i) {
+                i.printStackTrace();
+                return null;
+            }
+        }
+
+        /**
+         * Uses the coordinates retrieved by the Google Maps API and the current coordinates of the
+         * user to calculate the distance between them and update the UI accordingly.
+         *
+         * @param mapsList A MapsList object which contains the serialized response from the Google
+         *                 Maps API
+         */
+        @Override
+        protected void onPostExecute(MapsList mapsList) {
+            boolean statusCorrect = mapsList.getStatus().equals("OK");
+            if (mapsList != null && statusCorrect) {
+                updateAddressDetails(mapsList);
+                updateDistance(mapsList);
+
+            } else {
+                String errorMessage = "Error in network connection or address inputted";
+                Toast.makeText(LocationActivity.this, errorMessage, Toast.LENGTH_LONG).show();
+            }
+        }
+
+        /**
+         * Gets the address details from the results of the Google Maps API call such as the
+         * coordinates and full address of the user's intented destination
+         *
+         * @param mapsList A MapsList object which contains the serialized response from the Google
+         *                 Maps API
+         */
+        private void updateAddressDetails(MapsList mapsList) {
+            MapsResultsComponents[] resultsComponentsArray = mapsList.getResults();
+            MapsResultsComponents resultsComponents = resultsComponentsArray[0];
+
+            String formattedAddress = resultsComponents.getFormattedAddress();
+            MapsGeometry mapsGeometry = resultsComponents.getGeometry();
+            double latitude = mapsGeometry.getLocation().getLatitude();
+            double longitude = mapsGeometry.getLocation().getLongitude();
+
+            addressDetails.setText(getString(R.string.location_address_details) + "\n"
+                    + "Full Address: " + formattedAddress + "\n"
+                    + "Address Latitude: " + latitude + "\n"
+                    + "Address Longitude: " + longitude);
+        }
+
+        /**
+         * Uses the coordinates obtained by the Google Maps API to calculate and display a distance.
+         *
+         * @param mapsList A MapsList object which contains the serialized response from the Google
+         *                 Maps API
+         */
+        private void updateDistance(MapsList mapsList) {
+            MapsGeometry mapsGeometry = mapsList.getResults()[0].getGeometry();
+            double latitude = mapsGeometry.getLocation().getLatitude();
+            double longitude = mapsGeometry.getLocation().getLongitude();
+            Location targetLocation = new Location("");
+            targetLocation.setLatitude(latitude);
+            targetLocation.setLongitude(longitude);
+            float distanceMeters = recentLocation.distanceTo(targetLocation);
+
+            //We get distance in meters but we want to convert to miles
+            double distanceMiles = distanceMeters * METERS_TO_MILES;
+
+            //Only get the first two decimal places
+            String distanceMilesFormatted = String.format("%.2f", distanceMiles);
+            distanceActual.setText(distanceMilesFormatted + " mi");
+        }
+    }
+}

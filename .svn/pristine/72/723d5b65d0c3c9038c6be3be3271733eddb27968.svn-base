@@ -1,0 +1,107 @@
+<resources>
+    <!--The name of the app -->
+    <string name="app_name">Community Service Connector</string>
+
+
+    <!--AddEventAsyncTask.java-->
+    <string name="add_event_async_task_error_message">Error in network connection or address inputted</string>
+
+
+    <!--Strings for AuthActivity.java and activity_auth.xml  -->
+    <string name="welcome_message">Welcome To Community Service Connector. Sign In To Continue!</string>
+    <string name="welcome_sign_in_button">Begin Sign In</string>
+    <string name="canceled_sign_in_toast">You Have Cancelled Sign In</string>
+    <string name="auth_activity_sign_out_message">You Have Signed Out!</string>
+
+
+    <!--Strings for ChooseActionActvity.java and activity_choose_action.xml-->
+    <string name="choose_an_action">Select An Option Below</string>
+    <string name="add_an_event">Add An Event</string>
+    <string name="view_all_events">View All Events</string>
+    <string name="view_nearby_events">View Nearby Events</string>
+    <string name="view_nearby_events_dialog_title">Enter A Distance</string>
+    <string name="view_nearby_events_dialog_message">Enter a Location Distance, In Miles, That You
+        Would Like To Search Within: </string>
+    <string name="view_nearby_events_dialog_hint">5.5</string>
+    <string name="enable_GPS_permission_message">You need to enable the Security Permission for the GPS</string>
+    <string name="connection_failed_message">Connection Failed</string>
+    <string name="connection_suspended_message">Connection Suspended</string>
+
+
+    <!--Strings for CreateEventActivity.java and activity_create_event.xml-->
+    <string name="create_event_title">Create An Event</string>
+    <string name="create_event_title_label">Event Title *: </string>
+    <string name="create_event_description_label">Description *: </string>
+    <string name="create_event_address_label">Address *: </string>
+    <string name="create_event_start_date_label">Start Date *: </string>
+    <string name="create_event_start_time_label">Start Time *: </string>
+    <string name="create_event_end_date_label">End Date *: </string>
+    <string name="create_event_end_time_label">End Time *: </string>
+    <string name="create_event_image_label">Image URL: </string>
+    <string name="create_event_link_label">Event Link: </string>
+    <string name="create_event_submit">Submit</string>
+    <string name="link_hint_optional">Optional</string>
+    <string name="failed_add_event_message">Failed To Add Event. Another Event With The Same Name
+        Already Exists.</string>
+    <string name="success_add_event_message">Successfully Added Event!</string>
+
+
+    <!--Strings for EventListActivity.java, activity_event_list.xml, event_list_item.xml-->
+    <string name="database_read_interrupted">Database Read Interrupted</string>
+    <string name="event_list_description_label">Description: </string>
+    <string name="event_list_address_label">Address: </string>
+    <string name="event_list_start_date_label">Start: </string>
+    <string name="event_list_end_date_label">End: </string>
+    <string name="sample_event_name">Red Cross Blood Drive</string>
+    <string name="sample_event_address">University of Illinois at Urbana-Champaign, 1001 S Wright St, Champaign, IL 61820</string>
+    <string name="sample_event_description">The Red Cross chapter of Champaign Urbana...</string>
+    <string name="sample_event_start_date">4/16/2017 At 4:00 PM</string>
+    <string name="sample_event_end_date">4/18/2017 At 6:00 PM</string>
+    <string name="event_calendar_button">Add to Calendar</string>
+
+
+    <!--Strings for EventDetailActivity.java, activity_event_detail.xml, individual_name_item.xml-->
+    <string name="interested_button_message">I\'m Interested</string>
+    <string name="event_interested_label">Number Of People Interested: </string>
+    <string name="event_detail_address">Address: </string>
+    <string name="event_detail_description">Description: </string>
+    <string name="event_detail_start">Start: </string>
+    <string name="event_detail_end">End: </string>
+    <string name="event_detail_number_interested">Number Interested: </string>
+    <string name="event_detail_people_interested_button">View People Interested</string>
+    <string name="event_detail_maps_button">Get Directions</string>
+    <string name="event_detail_link_label">Event Link: </string>
+    <string name="event_detail_toggle_add_interest">Add Interest</string>
+    <string name="event_detail_toggle_remove_interest">Remove Interest</string>
+    <string name="event_detail_calendar_message">This event has been added to your calendar</string>
+    <string name="individual_name_item_sample_name">Raajesh Arunachalam</string>
+
+
+    <!--Firebase AuthUI Facebook Login Strings-->
+    <string name="facebook_application_id" translatable="false">254535541621190</string>
+    <string name="facebook_login_protocol_scheme" translatable="false">fb254535541621190</string>
+
+
+    <!--Intent keys -->
+    <string name="sign_out_key">Signed Out From Another Activity</string>
+    <string name="view_all_events_message_key">View All Events Key</string>
+    <string name="view_nearby_events_message_key">View Nearby Events Key</string>
+    <string name="latitude_key">Latitude</string>
+    <string name="longitude_key">Longitude</string>
+    <string name="distance_search_key">Distance Search Within</string>
+    <string name="event_key">Event Object</string>
+
+
+    <!--InterruptedException log message-->
+    <string name="database_operation_interrupted">Database Operation Interrupted</string>
+
+
+    <!--Signed In Top Bar-->
+    <!--\u0020 is the space character, which needs to be manually added at the end of strings-->
+    <string name="username_label">User:\u0020</string>
+
+
+    <!--Sign Out Menu-->
+    <string name="sign_out_menu">Sign out</string>
+
+</resources>

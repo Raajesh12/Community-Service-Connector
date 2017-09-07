@@ -1,0 +1,358 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.support.annotation.NonNull;
+import android.util.Log;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Contains important Insert operations to add new data to the Database schema and associated
+ * helper methods for accurately doing so
+ * <p>
+ * Created by raajesharunachalam on 4/18/17.
+ *
+ * @author arnchlm2
+ */
+
+public class DatabaseOperations {
+
+    private static boolean keyAlreadyExists;
+
+    /**
+     * If the given email does not already exist in the list, adds the given email to a list of
+     * emails that identify unique users in the Firebase Database.
+     *
+     * @param email A email that corresponds to a user.
+     * @throws InterruptedException Occurs when the thread is interrupted while waiting for an
+     *                              operation to finish.
+     */
+    public static void addUser(final String email) throws InterruptedException {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference usersReference = database.getReference("Users");
+
+        String formattedEmail = email.replace(".", "\\");
+
+        boolean usernameExists = checkKeyExists(usersReference, formattedEmail);
+
+        final CountDownLatch writeSignal = new CountDownLatch(1);
+        if (!usernameExists) {
+            usersReference.child(formattedEmail).setValue("No Events Interested In")
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            writeSignal.countDown();
+                        }
+                    });
+        }
+        writeSignal.await(1, TimeUnit.SECONDS);
+    }
+
+    /**
+     * If the user is not already interested in an event, adds the user to a list of people
+     * interested in the event and the event to a list of events the user is interested in
+     *
+     * @param eventName   The name of the event the user wants to say they are interested in.
+     * @param email       The email of the user who is interested in the event
+     * @param displayName The name of the user that is displayed.
+     * @throws InterruptedException Occurs when the thread is interrupted while waiting for an
+     *                              operation to finish.
+     */
+    public static void addInterested(String eventName, final String email, final String displayName)
+            throws InterruptedException {
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference eventReference = database.getReference("Events/" + eventName);
+        DatabaseReference peopleInterestedReference = eventReference.child("People Interested");
+
+        boolean isAlreadyInterested = checkKeyExists(peopleInterestedReference, email);
+
+        final CountDownLatch writeSignal = new CountDownLatch(2);
+        if (!isAlreadyInterested) {
+            peopleInterestedReference.child(email).setValue(displayName)
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            writeSignal.countDown();
+                        }
+                    });
+
+            DatabaseReference userReference = database.getReference("Users/" + email);
+            userReference.push().setValue(eventName).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    writeSignal.countDown();
+                }
+            });
+        }
+
+        writeSignal.await(2, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Reads all of the display names of the people who are interested in a given Event from the
+     * Database into a List.
+     *
+     * @param peopleInterestedReference The People Interested subtree of a given Event.
+     * @return A List of all the display names for people interested in a given event.
+     */
+    public static List<String> readUsersInterestedInEvent(DatabaseReference peopleInterestedReference)
+            throws InterruptedException {
+        final List<String> peopleInterested = new ArrayList<>();
+        final CountDownLatch readSignal = new CountDownLatch(1);
+        ChildEventListener childEventListener = peopleInterestedReference.addChildEventListener(
+                new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                peopleInterested.add(dataSnapshot.getValue(String.class));
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        readSignal.await(2, TimeUnit.SECONDS);
+        peopleInterestedReference.removeEventListener(childEventListener);
+
+        return peopleInterested;
+    }
+
+    /**
+     * Reads all the events a given user is interested in from the Database into a List.
+     *
+     * @param userReference
+     * @return
+     * @throws InterruptedException
+     */
+    public static List<String> readEventsUserInterestedIn(DatabaseReference userReference)
+            throws InterruptedException {
+        final List<String> eventsInterested = new ArrayList<>();
+        final CountDownLatch readSignal = new CountDownLatch(1);
+        ChildEventListener childEventListener = userReference.addChildEventListener(
+                new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                eventsInterested.add(dataSnapshot.getValue(String.class));
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        readSignal.await(2, TimeUnit.SECONDS);
+        userReference.removeEventListener(childEventListener);
+        return eventsInterested;
+    }
+
+    /**
+     * If an event with the same title does not already exist, adds a new event with the parameters
+     * as the data to the Database schema.
+     *
+     * @param eventTitle  The title of the event.
+     * @param address     The address of where the event is located.
+     * @param description A description of the activities that will take place at the event.
+     * @param imageURL    A URL to an image that represents the event.
+     * @param startDate   The day the event will start.
+     * @param startTime   The time the event will start.
+     * @param endDate     The day the event will end.
+     * @param endTime     The time the event will end.
+     * @throws InterruptedException Occurs when the thread is interrupted while waiting for an
+     *                              operation to finish.
+     */
+    public static void addEvent(String eventTitle, String address, String description, String imageURL,
+                                String startDate, String startTime, String endDate, String endTime)
+            throws InterruptedException {
+
+        FirebaseDatabase database = FirebaseDatabase.getInstance();
+        DatabaseReference eventsReference = database.getReference("Events");
+
+        boolean eventNameExists = checkKeyExists(eventsReference, eventTitle);
+
+        if (!eventNameExists) {
+            final HashMap<String, String> eventDetails = new HashMap<>();
+            eventDetails.put(Event.ADDRESS_KEY, address);
+            eventDetails.put(Event.DESCRIPTION_KEY, description);
+            eventDetails.put(Event.IMAGE_URL_KEY, imageURL);
+            eventDetails.put(Event.START_DATE_KEY, startDate);
+            eventDetails.put(Event.START_TIME_KEY, startTime);
+            eventDetails.put(Event.END_DATE_KEY, endDate);
+            eventDetails.put(Event.END_TIME_KEY, endTime);
+            eventDetails.put(Event.PEOPLE_INTERESTSED_KEY, Event.PEOPLE_INTERESTD_INITIAL_VALUE);
+
+            final CountDownLatch writeSignal = new CountDownLatch(1);
+
+            eventsReference.child(eventTitle).setValue(eventDetails)
+                    .addOnCompleteListener(new OnCompleteListener<Void>() {
+                        @Override
+                        public void onComplete(@NonNull Task<Void> task) {
+                            writeSignal.countDown();
+                        }
+                    });
+
+            writeSignal.await(1, TimeUnit.SECONDS);
+        }
+    }
+
+    /**
+     * Reads a DatabaseReference to a single Event and serializes data into an Event object
+     *
+     * @param eventReference A Reference to a single event in the database schema
+     * @return An Event object with all the data serialized from the event Database Reference
+     * @throws InterruptedException Occurs when the thread is interrupted while waiting for an
+     *                              operation to finish.
+     */
+    public static Event readEvent(DatabaseReference eventReference) throws InterruptedException {
+        final Event event = new Event();
+        event.setTitle(eventReference.getKey());
+
+        final CountDownLatch readSignal = new CountDownLatch(1);
+
+        final HashMap<String, String> eventDetails = new HashMap<String, String>();
+
+        ChildEventListener eventListener = eventReference.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                if (dataSnapshot.getKey().equals(Event.PEOPLE_INTERESTSED_KEY)) {
+                    if (dataSnapshot.getChildrenCount() == 0) {
+                        event.setPeopleInterested(null);
+                    } else {
+                        List<String> peopleInterestedList = new ArrayList<String>();
+                        for (DataSnapshot child : dataSnapshot.getChildren()) {
+                            peopleInterestedList.add(child.getValue(String.class));
+                        }
+                        event.setPeopleInterested(peopleInterestedList);
+                    }
+                } else {
+                    eventDetails.put(dataSnapshot.getKey(), dataSnapshot.getValue(String.class));
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        readSignal.await(2, TimeUnit.SECONDS);
+        eventReference.removeEventListener(eventListener);
+
+        event.setAddress(eventDetails.get(Event.ADDRESS_KEY));
+        event.setDescription(eventDetails.get(Event.DESCRIPTION_KEY));
+        event.setStartDate(eventDetails.get(Event.START_DATE_KEY));
+        event.setStartTime(eventDetails.get(Event.START_TIME_KEY));
+        event.setEndDate(eventDetails.get(Event.END_DATE_KEY));
+        event.setEndTime(eventDetails.get(Event.END_TIME_KEY));
+        event.setImageURL(eventDetails.get(Event.IMAGE_URL_KEY));
+
+        return event;
+    }
+
+    /**
+     * Checks if a given key already exists in the children of a Database Reference.
+     *
+     * @param reference A Database Reference to a given parent node
+     * @param keyToAdd  The key that needs to be compared with the keys of all the children
+     * @return A boolean signifying if the keyToAdd already exists in the children
+     * @throws InterruptedException Occurs when the thread is interrupted while waiting for an
+     *                              operation to finish.
+     */
+    public static boolean checkKeyExists(DatabaseReference reference, final String keyToAdd)
+            throws InterruptedException {
+
+        final CountDownLatch readSignal = new CountDownLatch(1);
+
+        //Reset value of usernameAlreadyExists before rechecking
+        keyAlreadyExists = false;
+
+        ChildEventListener childEventListener = reference.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                String key = dataSnapshot.getKey();
+                if (key.equals(keyToAdd)) {
+                    keyAlreadyExists = true;
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        readSignal.await(2, TimeUnit.SECONDS);
+        reference.removeEventListener(childEventListener);
+        return keyAlreadyExists;
+    }
+}

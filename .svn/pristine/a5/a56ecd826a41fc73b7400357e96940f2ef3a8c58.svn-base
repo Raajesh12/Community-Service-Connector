@@ -1,0 +1,338 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.location.Location;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.constraint.ConstraintLayout;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.gson.Gson;
+import com.google.gson.stream.JsonReader;
+import com.squareup.picasso.Picasso;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.util.Date;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Activity that demonstrates the ability to retrieve the current location in GPS coordinates of the
+ * user and to calculate distances using the Google Maps API. Code is modeled on tutorial from:
+ * https://developer.android.com/training/location/index.html
+ *
+ * @author arnchlm2
+ */
+public class LocationActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
+
+    private static final int LOCATION_REQUEST_SPEED = 3000;
+    private static int FASTEST_LOCATION_REQUEST_SPEED = 2000;
+    public static final int IMAGE_DIMENSION = 40;
+    private static final String TAG = "LocationActivity";
+
+    ConstraintLayout normalLayout;
+    ProgressBar progressBar;
+    TextView userInfo;
+    ImageView userIcon;
+    String displayName;
+    Uri photoURL;
+    Button addEvent;
+    Button viewAllEvents;
+    Button viewNearbyEvents;
+
+
+    GoogleApiClient mGoogleApiClient;
+    String lastUpdatedTime;
+    Location recentLocation;
+
+    /**
+     * Sets up the user profile and the OnClickListeners for the three buttons that allow the user
+     * to take different actions in the app.
+     *
+     * @param savedInstanceState A previous version of this activity with associated saved data.
+     */
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_location);
+
+        normalLayout = (ConstraintLayout) findViewById(R.id.activity_location_normal_layout);
+        progressBar = (ProgressBar) findViewById(R.id.activity_location_progress_bar);
+        userInfo = (TextView) findViewById(R.id.activity_location_user_info);
+        userIcon = (ImageView) findViewById(R.id.activity_location_user_icon);
+        addEvent = (Button) findViewById(R.id.add_event_button);
+        viewAllEvents = (Button) findViewById(R.id.view_all_events_button);
+        viewNearbyEvents = (Button) findViewById(R.id.view_nearby_events_button);
+
+        //Sets the user's name and picture based on their login account
+        Intent intent = getIntent();
+        if (intent.hasExtra(getString(R.string.display_name_key)) && intent.hasExtra(getString(R.string.display_photo_key))) {
+            displayName = intent.getStringExtra(getString(R.string.display_name_key));
+            userInfo.setText("User: " + displayName);
+
+            photoURL = (Uri) intent.getParcelableExtra(getString(R.string.display_photo_key));
+            if (photoURL != null) {
+                Picasso.with(this).load(photoURL).resize(IMAGE_DIMENSION, IMAGE_DIMENSION).into(userIcon);
+            }
+        }
+
+        //Sets up the Google API Client for connecting to the GoogleMaps Location API
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .addApi(LocationServices.API)
+                .build();
+
+
+        //Allows the user to move to a form where they can add a new event with associated details
+        addEvent.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(LocationActivity.this, CreateEventActivity.class);
+                intent.putExtra(getString(R.string.display_name_key), displayName);
+                intent.putExtra(getString(R.string.display_photo_key), photoURL);
+                startActivity(intent);
+            }
+        });
+
+        //Allows the user to see all the events in the database in another Activity
+        viewAllEvents.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(LocationActivity.this, EventListActivity.class);
+                intent.putExtra(getString(R.string.display_name_key), displayName);
+                intent.putExtra(getString(R.string.display_photo_key), photoURL);
+                intent.putExtra(getString(R.string.latitude_key), recentLocation.getLatitude());
+                intent.putExtra(getString(R.string.longitude_key), recentLocation.getLongitude());
+                startActivity(intent);
+            }
+        });
+
+        //Creates a dialog for the user to enter a maximum distance to search within
+        viewNearbyEvents.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //An AlertDialog for the user to enter a distance to search within
+                final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(LocationActivity.this);
+                dialogBuilder.setTitle("Location Distance To Search In");
+                dialogBuilder.setMessage("Enter a Location Distance That You Would Like To Search Within: ");
+
+                final FrameLayout layout = new FrameLayout(LocationActivity.this);
+
+                //The EditText the user can type into
+                final EditText distanceEntered = new EditText(LocationActivity.this);
+                distanceEntered.setHint("5.5");
+                distanceEntered.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                distanceEntered.setGravity(Gravity.CENTER_VERTICAL | Gravity.CENTER_HORIZONTAL);
+
+                layout.addView(distanceEntered);
+
+                dialogBuilder.setView(layout);
+
+                //Takes the user's input distance and begins a new activity to display the right events
+                dialogBuilder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        CountDownLatch waitForLocation = new CountDownLatch(1);
+
+                        double distanceToSearch = Double.parseDouble(distanceEntered.getText().toString());
+
+                        //Pauses for 3 seconds to make sure the user's location has been detected
+                        try {
+                            waitForLocation.await(3, TimeUnit.SECONDS);
+                        } catch (InterruptedException i) {
+                            Log.d(TAG, "Wait interrupted");
+                        }
+
+                        Intent intent = new Intent(LocationActivity.this, EventListActivity.class);
+                        intent.putExtra(getString(R.string.display_name_key), displayName);
+                        intent.putExtra(getString(R.string.display_photo_key), photoURL);
+                        intent.putExtra(getString(R.string.distance_search_key), distanceToSearch);
+                        intent.putExtra(getString(R.string.latitude_key), recentLocation.getLatitude());
+                        intent.putExtra(getString(R.string.longitude_key), recentLocation.getLongitude());
+
+                        startActivity(intent);
+                    }
+                });
+
+                //Removes the dialog if the user clicks cancel
+                dialogBuilder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                dialogBuilder.show();
+            }
+        });
+    }
+
+    /**
+     * Begins connecting to the Google Play Service Location API.
+     */
+    @Override
+    protected void onStart() {
+        mGoogleApiClient.connect();
+        super.onStart();
+    }
+
+    /**
+     * Stops connecting to the Google Play Service Location API.
+     */
+    @Override
+    protected void onStop() {
+        mGoogleApiClient.disconnect();
+        super.onStop();
+    }
+
+    /**
+     * Sets up the logic for retrieving the location from the Wi-fi/GPS signals from the system
+     * and what intervals to use
+     *
+     * @param bundle Bundle of data provided to clients by Google Play services.
+     *               May be null if no content is provided by the service.
+     */
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        //Gets the previous location, if there is one, before the new location updates begin
+        try {
+            Location lastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            if (lastLocation != null) {
+                recentLocation = lastLocation;
+
+                String time = DateFormat.getDateTimeInstance().format(new Date());
+                lastUpdatedTime = time;
+            }
+        } catch (SecurityException s) {
+            s.printStackTrace();
+        }
+
+        //Begins the new location updates
+        LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(LOCATION_REQUEST_SPEED);
+        mLocationRequest.setFastestInterval(FASTEST_LOCATION_REQUEST_SPEED);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        try {
+            LocationServices.FusedLocationApi.requestLocationUpdates(
+                    mGoogleApiClient, mLocationRequest, this);
+        } catch (SecurityException s) {
+            s.printStackTrace();
+            String enableGPSPermission = "You need to enable the Security Permission for the GPS";
+            Toast.makeText(this, enableGPSPermission, Toast.LENGTH_LONG);
+        }
+
+
+    }
+
+    /**
+     * Handles the case of when the connection to the Google Play Services Location API is suspended.
+     *
+     * @param i An integer that represents the reason for the disconnection
+     */
+    @Override
+    public void onConnectionSuspended(int i) {
+        String connectionSuspended = "Connection suspended";
+        Toast.makeText(this, connectionSuspended, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Handles the case of when the connection to the Google Play Services Location API fails.
+     *
+     * @param connectionResult A connectionResult that descries the error of why the connection
+     *                         failed.
+     */
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        String connectionFailed = "Connection Failed";
+        Toast.makeText(this, connectionFailed, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Callback method that updates a Location variable whenever a new location has been detected.
+     *
+     * @param location The most recently received Location by the Wi-Fi/GPS
+     */
+    @Override
+    public void onLocationChanged(Location location) {
+        recentLocation = location;
+        String time = DateFormat.getDateTimeInstance().format(new Date());
+        lastUpdatedTime = time;
+    }
+
+    /**
+     * Displays the sign out button in the top right of the mneu
+     *
+     * @param menu The menu of the current Activity
+     * @return A boolean signifying if the creation of the menu was successful
+     */
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.constant_menu, menu);
+        return true;
+    }
+
+    /**
+     * Makes the sign out button cause the user to sign out from Firebase when clicked
+     *
+     * @param item The specific item that was clicked
+     * @return A boolean signifying if the handling of the click on the menu item was successful
+     */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_sign_out_button) {
+            AuthUI.getInstance().signOut(this);
+            Intent intent = new Intent(LocationActivity.this, AuthActivity.class);
+            intent.putExtra(getString(R.string.sign_out_key), "Signed Out");
+            startActivity(intent);
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    /**
+     * If the user wants to go back to the home screen, they must sign out since the home screen's
+     * only purpose is to allow the user to sign in.
+     */
+    @Override
+    public void onBackPressed() {
+        AuthUI.getInstance().signOut(this);
+        super.onBackPressed();
+    }
+}

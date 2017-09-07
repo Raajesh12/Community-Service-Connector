@@ -1,0 +1,25 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+/**
+ * Stores the API Key for the Google Maps API, the API URL's for connecting to the Google Maps API,
+ * and the request ID token for Google Authentication
+ * <p>
+ * Created by raajesharunachalam on 4/8/17.
+ *
+ * @author arnchlm2
+ */
+
+public class GoogleAPIConstants {
+    public static final String Maps_API_KEY = "AIzaSyBmBu2Fi0agVisHh1r6Vef4ygyDr0SKcjQ";
+
+    //Example Full geocoding URL: https://maps.googleapis.com/maps/api/geocode/json?address=3659+Hector+Lane,+Naperville,+IL&key=AIzaSyBmBu2Fi0agVisHh1r6Vef4ygyDr0SKcjQ
+    public static final String GEOCODING_BASE_URL = "https://maps.googleapis.com/maps/api/geocode/json?address=";
+
+
+    //Example full Reverse Geocoding Base URL: https://maps.googleapis.com/maps/api/geocode/json?latlng=41.699222,%20-88.212547&key=AIzaSyBmBu2Fi0agVisHh1r6Vef4ygyDr0SKcjQ
+    public static final String REVERSE_GEOCODING_BASE_URL = "https://maps.googleapis.com/maps/api/geocode/json?latlng=";
+
+    public static final String AUTHENTICATION_REQUEST_CODE = "820093963133-g29c02qso433r64fdh4h" +
+            "l1k4osapfr2q.apps.googleusercontent.com";
+
+}

@@ -1,0 +1,218 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Represents an individual Community Service/Volunteering Event and all of its necessary data to be
+ * displayed to users of the app
+ * <p>
+ * Created by raajesharunachalam on 4/9/17.
+ *
+ * @author arnchlm2
+ */
+
+public class Event {
+    public static final String DESCRIPTION_KEY = "Description";
+    public static final String ADDRESS_KEY = "Address";
+    public static final String START_DATE_KEY = "Start Date";
+    public static final String START_TIME_KEY = "Start Time";
+    public static final String END_DATE_KEY = "End Date";
+    public static final String END_TIME_KEY = "End Time";
+    public static final String PEOPLE_INTERESTSED_KEY = "People Interested";
+    public static final String PEOPLE_INTERESTD_INITIAL_VALUE = "None";
+    public static final String IMAGE_URL_KEY = "Image URL";
+
+    private String title;
+    private String description;
+    private String address;
+    private String startDate;
+    private String startTime;
+    private String endDate;
+    private String endTime;
+    private List<String> peopleInterested;
+    private String imageURL;
+
+    public Event(){
+
+    }
+
+    /**
+     * Constructor that is used when the user does not provide a URL to an image for the event.
+     *
+     * @param title       The title of the event
+     * @param description A brief description of the event
+     * @param address     The address of where the event will be
+     * @param startDate   The start date that the event will take place
+     * @param startTime   The starting time am/pm of the event
+     * @param endTime     The ending time in am/pm of the event
+     */
+    public Event(String title, String description, String address, String startDate, String startTime,
+                 String endDate, String endTime) {
+        this.title = title;
+        this.description = description;
+        this.address = address;
+        this.startDate = startDate;
+        this.startTime = startTime;
+        this.endDate = endDate;
+        this.endTime = endTime;
+    }
+
+    /**
+     * Constructor that is used when the user does provide a URL to an image for the event.
+     *
+     * @param title       The title of the event
+     * @param description A brief description of the event
+     * @param address     The address of where the event will be
+     * @param startDate   The start date of the event
+     * @param startTime   The starting time in am/pm of the event
+     * @param endDate     The end date of the event
+     * @param endTime     The ending time in am/pm of the event
+     * @param imageURL    A URL to an image that will be displayed along with the other info about
+     *                    the event
+     */
+    public Event(String title, String description, String address, String startDate, String startTime,
+                 String endDate, String endTime, String imageURL) {
+        this.title = title;
+        this.description = description;
+        this.address = address;
+        this.startDate = startDate;
+        this.startTime = startTime;
+        this.endDate = endDate;
+        this.endTime = endTime;
+        this.imageURL = imageURL;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public String getStartDate() {
+        return startDate;
+    }
+
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public String getEndDate() {
+        return endDate;
+    }
+
+    public String getEndTime() {
+        return endTime;
+    }
+
+    public String getImageURL() {
+        return imageURL;
+    }
+
+    public List<String> getPeopleInterested() {
+        return peopleInterested;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setStartDate(String startDate) {
+        this.startDate = startDate;
+    }
+
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
+    }
+
+    public void setEndDate(String endDate) {
+        this.endDate = endDate;
+    }
+
+    public void setEndTime(String endTime) {
+        this.endTime = endTime;
+    }
+
+    public void setPeopleInterested(List<String> peopleInterested) {
+        this.peopleInterested = peopleInterested;
+    }
+
+    public void setImageURL(String imageURL) {
+        this.imageURL = imageURL;
+    }
+
+    /**
+     * Creates and returns a List of 5 Event objects with standard, default data stored in them.
+     *
+     * @return The newly created/initialized list of 5 Event objects with default data.
+     */
+    public static ArrayList<Event> createDefaultEvents() {
+        ArrayList<Event> defaultEvents = new ArrayList<>();
+
+        Event ymcaEvent = new Event("Red Cross Blood Drive",
+                "The Red Cross chapter of Champaign Urbana will be hosting a blood drive next Saturday",
+                "1001 S Wright St, Champaign, IL 61820",
+                "4/16/2017",
+                "2:00 pm",
+                "4/16/2017",
+                "5:00 pm",
+                "http://certified.housing.illinois.edu/wp-content/uploads/2015/07/07-20-15-propertypage-YMCA1-PCH.jpg");
+        defaultEvents.add(ymcaEvent);
+
+        Event schoolEvent = new Event("Champaign Public School Outreach",
+                "Introduce elementary/middle school students to STEM careers and research",
+                "306 W Green St, Champaign, IL 61820",
+                "4/18/2017",
+                "12:00 pm",
+                "4/18/2017",
+                "3:00 pm",
+                "https://edison.champaignschools.org/sites/edison_d7/files/glazed-assets/edison_0.jpg?fid=31");
+        defaultEvents.add(schoolEvent);
+
+        Event engineeringOpenHouse = new Event("Engineering Open House",
+                "Showcase research of engineering department to young, aspiring students",
+                "1401 W Green St, Urbana, IL 61801",
+                "4/24/2017",
+                "11:00 am",
+                "4/25/2017",
+                "4:00 pm",
+                "http://uihistories.library.illinois.edu/photoarchive/wallpapers/uiuc/full/50235.jpg");
+        defaultEvents.add(engineeringOpenHouse);
+
+        Event hackIllinois = new Event("Hack Illinois Volunteering",
+                "Help with food and operations of UIUC CS's HackIllinois, a large student-run hackathon.",
+                "201 N Goodwin Ave, Urbana, IL 61801",
+                "4/27/2017",
+                "5:00 pm",
+                "4/29/2017",
+                "11:00 pm",
+                "https://pbs.twimg.com/profile_images/832323132677566464/4KWfvuVj.jpg");
+        defaultEvents.add(hackIllinois);
+
+        Event urbanaFoodbank = new Event("Urbana Food Bank Volunteering",
+                "Volunteer at the Urbana Food Bank to help those in need in the local CU area",
+                "2405 N Shore Dr, Urbana, IL 61802",
+                "4/30/2017",
+                "6:00 pm",
+                "4/30/2017",
+                "9:00 pm",
+                "http://www.feedingillinois.org/images/food_bank_logos/eastern.gif");
+        defaultEvents.add(urbanaFoodbank);
+
+        return defaultEvents;
+    }
+}

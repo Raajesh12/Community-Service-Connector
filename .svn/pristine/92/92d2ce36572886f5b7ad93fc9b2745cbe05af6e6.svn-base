@@ -1,0 +1,228 @@
+package com.example.raajesharunachalam.communityserviceconnector;
+
+import android.content.Intent;
+import android.location.Location;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+import com.firebase.ui.auth.AuthUI;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
+
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+
+import android.util.Log;
+
+/**
+ * The EventListActivity which displays a list of Event objects and allows users to add them to the
+ * calendars on their devices
+ *
+ * @author arnchlm2
+ */
+public class EventListActivity extends AppCompatActivity {
+
+    private static final String TAG = "EventListActivity";
+
+    private static final int CALENDAR_ID = 1;
+    private static final int IMAGE_DIMENSION = 40;
+    private static final double MAXIMUM_DISTANCE = 10.0;
+    public static final double METERS_TO_MILES = 0.000621371;
+
+    double currentLatitude;
+    double currentLongitude;
+    String displayName;
+    Uri photoURL;
+    EventAdapter adapter;
+    ImageView userIcon;
+    TextView username;
+    RecyclerView eventsRecyclerView;
+    ProgressBar progressBar;
+
+    /**
+     * Sets up the recyclerView and its associated data Adapter essential for the app to perform
+     * properly.
+     *
+     * @param savedInstanceState A previous instance of this Activity and associated data.
+     */
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_event_list);
+
+        userIcon = (ImageView) findViewById(R.id.calendar_user_icon);
+        username = (TextView) findViewById(R.id.calendar_username);
+
+        //Sets the username and photo. Also, gets the current longitude/latitude from the previous activity
+        Intent intent = getIntent();
+        if (intent.hasExtra(getString(R.string.display_name_key)) && intent.hasExtra(getString(R.string.display_photo_key)) &&
+                intent.hasExtra(getString(R.string.latitude_key)) && intent.hasExtra(getString(R.string.longitude_key))) {
+            currentLatitude = intent.getDoubleExtra(getString(R.string.latitude_key), 0.0);
+            currentLongitude = intent.getDoubleExtra(getString(R.string.longitude_key), 0.0);
+            displayName = intent.getStringExtra(getString(R.string.display_name_key));
+            username.setText("User: " + displayName);
+
+            photoURL = (Uri) intent.getParcelableExtra(getString(R.string.display_photo_key));
+            Picasso.with(this).load(photoURL).resize(IMAGE_DIMENSION, IMAGE_DIMENSION).into(userIcon);
+        }
+
+        //Makes the progress bar visible while the events load
+        progressBar = (ProgressBar) findViewById(R.id.progress_bar_events);
+        progressBar.setVisibility(View.VISIBLE);
+
+        //Makes the RecyclerView invisible while the events load
+        eventsRecyclerView = (RecyclerView) findViewById(R.id.events_recycler_view);
+        eventsRecyclerView.setVisibility(View.INVISIBLE);
+
+
+        //Sets the appropriate LinearLayout style for the RecyclerView
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+        eventsRecyclerView.setLayoutManager(layoutManager);
+
+        ArrayList<Event> defaultEvents = new ArrayList<>();
+        adapter = new EventAdapter(this, defaultEvents, CALENDAR_ID, displayName, photoURL);
+        eventsRecyclerView.setAdapter(adapter);
+
+        //Begin loading the events
+        new LoadEventsAsyncTask().execute();
+    }
+
+    /**
+     * Displays the sign out button in the top right of the mneu
+     *
+     * @param menu The menu of the current Activity
+     * @return A boolean signifying if the creation of the menu was successful
+     */
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.constant_menu, menu);
+        return true;
+    }
+
+    /**
+     * Makes the sign out button cause the user to sign out from Firebase when clicked
+     *
+     * @param item The specific item that was clicked
+     * @return A boolean signifying if the handling of the click on the menu item was successful
+     */
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_sign_out_button) {
+            AuthUI.getInstance().signOut(this);
+            Intent intent = new Intent(EventListActivity.this, AuthActivity.class);
+            intent.putExtra(getString(R.string.sign_out_key), "Signed Out");
+            startActivity(intent);
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    /**
+     * Runs on a background thread and goes through all the events in the database, determining which
+     * events fit the search criteria the user has specified (maximum distance to search within).
+     */
+    public class LoadEventsAsyncTask extends AsyncTask<Void, Void, ArrayList<Event>> {
+
+        /**
+         * Loops through the events and checks their distance from the user's current location to
+         * see if they should be displayed
+         *
+         * @param params The type is void, so no params are needed
+         * @return A List of Events that are within the distance specified by the user
+         */
+        @Override
+        protected ArrayList<Event> doInBackground(Void... params) {
+
+            final CountDownLatch readEvent = new CountDownLatch(1);
+
+            final Location currentLocation = new Location("");
+            currentLocation.setLatitude(currentLatitude);
+            currentLocation.setLongitude(currentLongitude);
+
+            FirebaseDatabase database = FirebaseDatabase.getInstance();
+            DatabaseReference events = database.getReference("Events");
+
+            final ArrayList<Event> displayEvents = new ArrayList<>();
+
+            events.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    try {
+                        for (DataSnapshot eventSnapshot : dataSnapshot.getChildren()) {
+
+                            Location eventLocation = new Location("");
+
+                            String latitudeString = (String) eventSnapshot.child("Latitude").getValue();
+                            double latitude = Double.parseDouble(latitudeString);
+                            eventLocation.setLatitude(latitude);
+
+                            String longitudeString = (String) eventSnapshot.child("Longitude").getValue();
+                            double longitude = Double.parseDouble(longitudeString);
+                            eventLocation.setLongitude(longitude);
+
+                            float distanceMeters = currentLocation.distanceTo(eventLocation);
+
+                            //We get distance in meters but we want to convert to miles
+                            double distanceMiles = distanceMeters * METERS_TO_MILES;
+
+                            //If the event is within the proper distance, add it to the RecyclerView
+                            if (distanceMiles < MAXIMUM_DISTANCE) {
+                                Event event = DatabaseOperations.readEvent(eventSnapshot);
+                                displayEvents.add(event);
+                            }
+                        }
+                        readEvent.countDown();
+                    } catch (InterruptedException i) {
+                        Log.d(TAG, "Event read interruped");
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+            try {
+                readEvent.await();
+            } catch (InterruptedException i) {
+
+            }
+            Log.d("EventListActivity", String.valueOf(displayEvents.size()));
+
+            return displayEvents;
+        }
+
+        /**
+         * Sets up the adapter with the new list of events and resets the UI so that the progressBar
+         * is invisible while the RecyclerView is visible.
+         *
+         * @param events
+         */
+        @Override
+        protected void onPostExecute(ArrayList<Event> events) {
+            adapter.setEvents(events);
+            adapter.notifyDataSetChanged();
+
+            //Remove the progress bar
+            progressBar.setVisibility(View.INVISIBLE);
+            eventsRecyclerView.setVisibility(View.VISIBLE);
+        }
+    }
+}
